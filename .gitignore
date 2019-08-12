@@ -1,1 +1,6 @@
 venv/
+run.sh
+images/*
+site/
+.lastrun
+.DS_Store
