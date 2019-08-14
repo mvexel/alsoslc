@@ -4,3 +4,6 @@ images/*
 site/
 .lastrun
 .DS_Store
+alsoslc.sublime-project
+alsoslc.sublime-workspace
+assets/*

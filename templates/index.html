@@ -9,17 +9,18 @@
 	integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
 	crossorigin=""></script>
 	<style type="text/css">
-   	#map {
-   		margin: 0px;
-   		bottom: 10px;
-   		border: 1px solif black;
-   		background-color: #fca;
-   	}
-   </style>
+		#map {
+    		position: absolute;
+    		top: 0;
+    		left: 0;
+    		width: 100%;
+    		height: 100%;		
+    	}
+	</style>
 {% endblock %}
 {% block content %}
 	<h1>Also SLC</h1>
-	<p>{{ welcome_message }}</p>
+	<p>Welcome to AlsoSLC, an ever-growing collection of photos of the changing face of Salt Lake City.</p>
 	<div id="map"></div>
 	<script type="text/javascript">
 		var mymap = L.map('map');
@@ -27,7 +28,16 @@
 			maxZoom: 17,
 			attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
 		}).addTo(mymap);
-		// markers
-
+		var cameraIcon = L.icon({
+		    iconUrl: 'assets/camera-24.png',
+		    iconSize: [24, 24],
+		});
+		var markerGroup = new L.FeatureGroup();
+		// markers and bounds
+		{% for image in site.images %}
+		var marker{{ loop.index }}  = L.marker([{{ image.lat }}, {{ image.lon }}], {icon: cameraIcon}).addTo(markerGroup);
+		{% endfor %}
+		markerGroup.addTo(mymap);
+		mymap.fitBounds(markerGroup.getBounds(), [100,100]);
 	</script>
 {% endblock %}

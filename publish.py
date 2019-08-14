@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
+"""Publish AlsoSLC"""
 
 import sys
 import os
 from pathlib import Path
-import exifread
 from datetime import datetime
-from PIL import Image, ExifTags
+from shutil import rmtree, copytree
+import imghdr
+import exifread
+from PIL import Image
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-IMAGES_PATH = None
-SITE_PATH = None
+IMAGES_DIR = None
+SITE_ROOT = None
 FORCE_RESYNC = False
 LAST_RUN = None
+
+# pylint:disable=C0103
 
 def dms_to_decimal(dms_ratios):
     """Convert given DMS to decimal degrees"""
@@ -22,40 +27,84 @@ def dms_to_decimal(dms_ratios):
         in_mins.num / in_mins.den * 60 + in_secs.num / in_secs.den) / 3600
 
 
-class AlsoSLCImageSet():
-    """A set of Images"""
+class AlsoSLCSite():  #pylint:disable=R0903
+    """The site"""
 
+    source_path = None
+    root_path = None
+    assets_subdir = None
+    images_subdir = None
+    thumb_sizes = []
     images = []
-    html = None
-    basename = None
-    dest_path = None
 
-
-    def add_image(self, my_image):
-        """Add an image to the set"""
-        self.images.append(my_image)
-
-
-    def save_all(self):
-        """Create and save the page with all the images"""
+    def index_html(self):
+        """Generate the index page html"""
         jinja_env = Environment(
             loader=FileSystemLoader('templates'),
             autoescape=select_autoescape(['html', 'xml']))
         home_template = jinja_env.get_template('index.html')
-        self.html = home_template.render(imgset=self)
+        return home_template.render(site=self)
 
-        # save the HTML
+
+    def save(self):
+        """Save everything"""
+
+        # clean out site root
+        rmtree(self.root_path)
+
+        # create image directory if not exist
+        os.makedirs(os.path.join(
+            self.root_path,
+            self.images_subdir), exist_ok=True)
+
+        # gather all images
+        for filename in os.listdir(
+                os.path.join(
+                    self.source_path,
+                    self.images_subdir)):
+
+            print("opening image at {}".format(
+                os.path.join(
+                    self.source_path,
+                    self.images_subdir,
+                    filename)))
+            the_image = AlsoSLCImage.from_file(
+                os.path.join(
+                    self.source_path,
+                    self.images_subdir,
+                    filename))
+            if the_image:
+                self.images.append(the_image)
+                print("added {}, now {}".format(the_image, len(self.images)))
+            else:
+                print("skipping {}".format(filename))
+
+        # create thumbnails and save them, and the full size image
+        for image in self.images:
+            image.create_thumbs(self.thumb_sizes)
+            image.save(self.root_path, os.path.join(self.root_path, self.images_subdir))
+
+        # write index page
         with open(os.path.join(
-                        self.dest_path,
-                        self.basename + '.html'), 'w') as file_handle:
-            file_handle.write(self.html)
+                self.root_path,
+                'index.html'), 'w') as file_handle:
+            file_handle.write(self.index_html())
+
+        # copy other assets
+        copytree(
+            os.path.join(self.source_path, self.assets_subdir),
+            os.path.join(self.root_path, 'assets'))
+
+    def __str__(self):
+        return "AlsoSLC site at {} with assets at {} and images at {}".format(
+            self.root_path,
+            self.assets_subdir,
+            self.images_subdir)
 
 
 class AlsoSLCImage():
     """An image"""
 
-    source_path = None
-    dest_path = None
     _date_taken = None
     caption = None
     lon = None
@@ -63,23 +112,19 @@ class AlsoSLCImage():
     thumbs = {}
     image_handle = None
     html = None
-    image_filename = None
-    image_dir_name = None
 
+    def __init__(self, handle):
+        self.image_handle = handle
+        self._read_exif()
 
-    def __new__(cls, source_path, dest_path, image_dir_name):
-        if source_path and dest_path and image_dir_name:
-            instance = super(AlsoSLCImage, cls).__new__(cls)
-            instance.source_path = source_path
-            instance.dest_path = dest_path
-            instance.image_dir_name = image_dir_name
-            instance.image_filename = os.path.basename(source_path)
-            instance.image_handle = Image.open(source_path)
-            if instance._read_exif():  # pylint:disable=protected-access
-                return instance
-            return None
+    @classmethod
+    def from_file(cls, image_path):
+        """Create an image object from an image file path"""
+        if os.path.isfile(image_path) and imghdr.what(image_path) in ['jpeg', 'png']:
+            image_handle = Image.open(image_path)
+            print("handle of image: ", image_handle)
+            return cls(image_handle)
         return None
-
 
     def create_thumbs(self, widths):
         """Create thumbnails for this image of given sizes"""
@@ -89,14 +134,14 @@ class AlsoSLCImage():
                 im_copy = self.image_handle.copy()
                 im_copy.thumbnail((width, width), Image.ANTIALIAS)
                 thumb_filename = "{basename}_{width}.jpg".format(
-                    basename=os.path.basename(self.image_filename),
+                    basename=os.path.basename(self.image_handle.filename),
                     width=width)
                 self.thumbs[width] = {
                     'filename': thumb_filename,
                     'handle': im_copy}
 
     def _read_exif(self):
-        with open(self.source_path, 'rb') as file_handle:
+        with open(self.image_handle.filename, 'rb') as file_handle:
             exifs = exifread.process_file(file_handle, details=True)
 
         # Check for availability of geotag
@@ -128,20 +173,21 @@ class AlsoSLCImage():
             self.caption = "N/A"
         return True
 
-
-    def save_all(self):
+    def save(self, site_path, image_subdir):
         """Create and save the HTML + images"""
         jinja_env = Environment(
             loader=FileSystemLoader('templates'),
             autoescape=select_autoescape(['html', 'xml']))
         home_template = jinja_env.get_template('single.html')
-        self.html = home_template.render(img=self)
+        self.html = home_template.render(
+            image=self,
+            relpath=os.path.join(image_subdir, self.image_handle.filename))
 
         # save the HTML
         with open(
                 os.path.join(
-                    self.dest_path,
-                    os.path.basename(self.image_filename) + '.html'),
+                    site_path,
+                    os.path.splitext(os.path.basename(self.image_handle.filename))[0] + '.html'),
                 'w') as file_handle:
             file_handle.write(self.html)
 
@@ -149,18 +195,17 @@ class AlsoSLCImage():
         for thumb_width in self.thumbs:
             thumb = self.thumbs[thumb_width]
             thumb_path = os.path.join(
-                self.dest_path,
-                self.image_dir_name,
+                site_path,
+                image_subdir,
                 thumb['filename'])
             thumb['handle'].save(thumb_path, "JPEG")
         self.image_handle.save(os.path.join(
-            self.dest_path,
-            self.image_dir_name,
-            os.path.basename(self.image_filename) + ".jpg"), "JPEG")
-
+            site_path,
+            image_subdir,
+            os.path.basename(self.image_handle.filename)), "JPEG")
 
     def __str__(self):
-        return "Also SLC Image at ({lon},{lat}".format(
+        return "AlsoSLC Image at ({lon},{lat})".format(
             lon=self.lon,
             lat=self.lat)
 
@@ -169,21 +214,9 @@ class AlsoSLCImage():
         """The date an image was taken as a human readable string"""
         return self._date_taken.strftime("%Y-%m-%d")
 
-
     @date_taken.setter
     def date_taken(self, val):
         self._date_taken = val
-
-    @property
-    def full_path(self, size=None):
-        """The full path to the thumbnail of given size.
-        If size not given return path to full image"""
-        if size:
-            my_filename = img.thumbs[max(self.thumbs, key=int)]['filename']
-        else:
-            my_filename = self.image_filename
-        return os.path.join(
-            self.image_dir_name, my_filename)
 
 
 def crap(message):
@@ -194,12 +227,13 @@ def crap(message):
 
 if __name__ == '__main__':
     ARGS = sys.argv
-    if len(ARGS) < 3:
-        crap('Usage: publish.py IMG_PATH SITE_PATH [FORCE_RESYNC]')
-
-    IMAGES_PATH = ARGS[1]
-    SITE_PATH = ARGS[2]
-    if len(ARGS) == 4:
+    if len(ARGS) < 4:
+        crap('Usage: publish.py SOURCE_ROOT SITE_ROOT IMAGES_DIR ASSETS_DIR [FORCE_RESYNC]')
+    SOURCE_ROOT = ARGS[1]
+    SITE_ROOT = ARGS[2]
+    IMAGES_DIR = ARGS[3]
+    ASSETS_DIR = ARGS[4]
+    if len(ARGS) == 5:
         print('Force a re-sync')
         FORCE_RESYNC = True
 
@@ -211,25 +245,14 @@ if __name__ == '__main__':
         LAST_RUN = datetime.now()
     print('last run: ', LAST_RUN)
 
-    if not (os.path.isdir(IMAGES_PATH) and os.path.isdir(SITE_PATH)):
-        crap('Paths must both exist')
+    if not os.path.isdir(SITE_ROOT):
+        crap('Site root does not exist')
 
-    # create images subdirectory
-    os.makedirs(os.path.join(SITE_PATH, 'images'), exist_ok=True)
-
-    print('loading images from', IMAGES_PATH)
-    print('saving to', SITE_PATH)
-
-    for filename in os.listdir(IMAGES_PATH):
-
-        img = AlsoSLCImage(os.path.join(IMAGES_PATH, filename), SITE_PATH, 'images')
-        # set the relative path for saving images
-
-        if img:
-            print(img)
-            # Create small sizes
-            img.create_thumbs([1024, 640, 320])
-            # Save everything
-            img.save_all()
-        else:
-            print("skipping {}".format(filename))
+    site = AlsoSLCSite()
+    site.source_path = os.path.abspath(SOURCE_ROOT)
+    site.root_path = os.path.abspath(SITE_ROOT)
+    site.assets_subdir = ASSETS_DIR
+    site.images_subdir = IMAGES_DIR
+    site.thumb_sizes = [1024, 640, 320]
+    print(site)
+    site.save()

@@ -10,7 +10,7 @@
 	crossorigin=""></script>
 	<style type="text/css">
 		#map {
-			height: 200px;
+			height: 600px;
 		}
 	</style>
 {% endblock %}
@@ -22,13 +22,13 @@
     	</div>
     	<div class="columns">
     		<div class="column col-9">
-    			<img src="{{ img.full_path }}" class="img-responsive" />
+    			<img src="{{ relpath }}" class="img-responsive" />
     		</div>
     		<div class="column col-3">
 	        	<div id="map"></div>
 	        	<div id="metadata" style="margin-top: 20px">
-        			<p><em>Taken on</em> {{ img.date_taken }}</p>
-	        		<p><em>Description</em> {{ img.caption }}</p>
+        			<p><em>Taken on</em> {{ image.date_taken }}</p>
+	        		<p><em>Description</em> {{ image.caption }}</p>
 	        	</div>
 	        </div>
 	    </div>
@@ -42,12 +42,17 @@
 {% endblock %}
 {% block scripts %}
 	<script type="text/javascript">
-		var mymap = L.map('map').setView([{{ img.lat }}, {{ img.lon }}], 17);
+		var mymap = L.map('map').setView([{{ image.lat }}, {{ image.lon }}], 17);
 		L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
 			maxZoom: 17,
 			attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
 		}).addTo(mymap);
 		// markers
-		L.marker([{{ img.lat }}, {{ img.lon }}]).addTo(mymap);
+		var cameraIcon = L.icon({
+		    iconUrl: 'assets/camera-24.png',
+		    iconSize: [24, 24],
+		});
+
+		L.marker([{{ image.lat }}, {{ image.lon }}], {icon: cameraIcon}).addTo(mymap);
 	</script>
 {% endblock %}
