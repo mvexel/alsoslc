@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Index{% endblock %}
+{% block title %}Home{% endblock %}
 {% block head %}
     {{ super() }}
 	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
@@ -23,19 +23,22 @@
 	<p>Welcome to AlsoSLC, an ever-growing collection of photos of the changing face of Salt Lake City.</p>
 	<div id="map"></div>
 	<script type="text/javascript">
+		// Init map
 		var mymap = L.map('map');
+		// Add OSM topo layer
 		L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
 			maxZoom: 17,
 			attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
 		}).addTo(mymap);
+		// define camera icon
 		var cameraIcon = L.icon({
-		    iconUrl: 'assets/camera-24.png',
+		    iconUrl: 'assets/camera-63.png',
 		    iconSize: [24, 24],
 		});
+		// Add markers
 		var markerGroup = new L.FeatureGroup();
-		// markers and bounds
 		{% for image in site.images %}
-		var marker{{ loop.index }}  = L.marker([{{ image.lat }}, {{ image.lon }}], {icon: cameraIcon}).addTo(markerGroup);
+		var marker{{ loop.index }}  = L.marker([{{ image.lat }}, {{ image.lon }}], {icon: cameraIcon}).addTo(markerGroup).bindPopup("<center><a href='{{ image.name }}.html'><img src='images/{{ site.smallest_thumbnail_width_for(image) }}' /></a><p><small>{{ image.date_taken }}</small></p></center>");
 		{% endfor %}
 		markerGroup.addTo(mymap);
 		mymap.fitBounds(markerGroup.getBounds(), [100,100]);
