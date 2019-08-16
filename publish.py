@@ -3,7 +3,6 @@
 
 import sys
 import os
-from pathlib import Path
 from datetime import datetime
 from shutil import rmtree, copytree
 import imghdr
@@ -26,14 +25,52 @@ def dms_to_decimal(dms_ratios):
     return in_degs.num / in_degs.den + (
         in_mins.num / in_mins.den * 60 + in_secs.num / in_secs.den) / 3600
 
+def read_exif(image_handle):
+    """Reads relevant exif tags from an image provided as PIL.Image object"""
+    lat = 0.0
+    lon = 0.0
+    date_taken = None
+    description = ""
+
+    with open(image_handle.filename, 'rb') as file_handle:
+        exifs = exifread.process_file(file_handle, details=True)
+
+    # Check for availability of geotag
+    if 'GPS GPSLongitude' not in exifs:
+        print("no GPS in image {}".format(image_handle.filename))
+        return None
+    # Extract decimal coordinates
+    lon_dms = exifs.get('GPS GPSLongitude').values
+    lat_dms = exifs.get('GPS GPSLatitude').values
+    lon_orientation = exifs.get('GPS GPSLongitudeRef').values
+    lat_orientation = exifs.get('GPS GPSLatitudeRef').values
+
+    # convert to decimal coords
+    lon = dms_to_decimal(lon_dms)
+    lat = dms_to_decimal(lat_dms)
+    if lon_orientation == 'W':
+        lon = -lon
+    if lat_orientation == 'S':
+        lat = -lat
+
+    # Gather EXIF date, description
+    # self.date_taken = exifs.get('EXIF DateTimeOriginal').values
+    # 2019:08:04 12:28:53
+    date_taken = datetime.strptime(
+        exifs.get('EXIF DateTimeOriginal').values,
+        '%Y:%m:%d %H:%M:%S')
+    desc_exif = exifs.get('Image ImageDescription')
+    if desc_exif:
+        description = desc_exif.values
+    else:
+        description = "None given"
+    return {"lat": lat, "lon": lon, "date_taken": date_taken, "description": description}
 
 class AlsoSLCSite():  #pylint:disable=R0903
     """The site"""
 
     source_path = None
-    root_path = None
-    assets_subdir = None
-    images_subdir = None
+    site_path = None
     image_widths = []
     images = []
 
@@ -50,28 +87,19 @@ class AlsoSLCSite():  #pylint:disable=R0903
         """Save everything"""
 
         # clean out site root
-        rmtree(self.root_path)
+        print("clearing {}".format(self.site_path))
+        rmtree(self.site_path)
 
         # create image directory if not exist
         os.makedirs(os.path.join(
-            self.root_path,
-            self.images_subdir), exist_ok=True)
+            self.site_path,
+            'images'), exist_ok=True)
 
         # gather all images
-        for filename in os.listdir(
-                os.path.join(
-                    self.source_path,
-                    self.images_subdir)):
-
-            print("opening image at {}".format(
-                os.path.join(
-                    self.source_path,
-                    self.images_subdir,
-                    filename)))
+        for filename in os.listdir(self.source_path):
             the_image = AlsoSLCImage.from_file(
                 os.path.join(
                     self.source_path,
-                    self.images_subdir,
                     filename))
             if the_image:
                 self.images.append(the_image)
@@ -81,22 +109,23 @@ class AlsoSLCSite():  #pylint:disable=R0903
         # create thumbnails and save them, and the full size image
         for image in self.images:
             image.save(
-                self.root_path,
+                self.site_path,
                 os.path.join(
-                    self.root_path,
-                    self.images_subdir),
+                    self.site_path,
+                    'images'),
                 self.image_widths)
 
         # write index page
         with open(os.path.join(
-                self.root_path,
+                self.site_path,
                 'index.html'), 'w') as file_handle:
             file_handle.write(self.index_html())
 
         # copy other assets
         copytree(
-            os.path.join(self.source_path, self.assets_subdir),
-            os.path.join(self.root_path, 'assets'))
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 'assets'),
+            os.path.join(self.site_path, 'assets'))
 
     def smallest_thumbnail_width_for(self, image):
         """A helper method for Jinja rendering."""
@@ -111,10 +140,8 @@ class AlsoSLCSite():  #pylint:disable=R0903
 
 
     def __str__(self):
-        return "AlsoSLC site at {} with assets at {} and images at {}".format(
-            self.root_path,
-            self.assets_subdir,
-            self.images_subdir)
+        return "AlsoSLC site at {}".format(
+            self.site_path)
 
 
 class AlsoSLCImage():
@@ -127,53 +154,29 @@ class AlsoSLCImage():
     image_handle = None
     html = None
 
-    def __init__(self, handle):
+    def __init__(self, handle, exifs):
         self.image_handle = handle
-        self._read_exif()
+        self.lon = exifs.get("lon")
+        self.lat = exifs.get("lat")
+        self.date_taken = exifs.get("date_taken")
+        self.description = exifs.get("description")
+
 
     @classmethod
     def from_file(cls, image_path):
         """Create an image object from an image file path"""
         if os.path.isfile(image_path) and imghdr.what(image_path) in ['jpeg', 'png']:
             image_handle = Image.open(image_path)
-            return cls(image_handle)
+            exifs = read_exif(image_handle)
+            if exifs:
+                return cls(image_handle, exifs)
         return None
 
-    def _read_exif(self):
-        with open(self.image_handle.filename, 'rb') as file_handle:
-            exifs = exifread.process_file(file_handle, details=True)
-
-        # Check for availability of geotag
-        if 'GPS GPSLongitude' not in exifs and 'GPS GPSLatitude' not in exifs:
-            return False
-
-        # Extract decimal coordinates
-        lon_dms = exifs.get('GPS GPSLongitude').values
-        lat_dms = exifs.get('GPS GPSLatitude').values
-        lon_orientation = exifs.get('GPS GPSLongitudeRef').values
-        lat_orientation = exifs.get('GPS GPSLatitudeRef').values
-        self.lon = dms_to_decimal(lon_dms)
-        self.lat = dms_to_decimal(lat_dms)
-        if lon_orientation == 'W':
-            self.lon = -self.lon
-        if lat_orientation == 'S':
-            self.lat = -self.lat
-
-        # Gather EXIF date, description
-        # self.date_taken = exifs.get('EXIF DateTimeOriginal').values
-        # 2019:08:04 12:28:53
-        self.date_taken = datetime.strptime(
-            exifs.get('EXIF DateTimeOriginal').values,
-            '%Y:%m:%d %H:%M:%S')
-        desc_exif = exifs.get('Image ImageDescription')
-        if desc_exif is not None:
-            self.description = desc_exif.values
-        else:
-            self.description = "None given"
-        return True
 
     def save(self, site_path, image_subdir, widths):
         """Create and save the HTML + images"""
+
+        print("saving {}".format(self.name))
 
         # Render HTML
         jinja_env = Environment(
@@ -243,32 +246,18 @@ def crap(message):
 
 if __name__ == '__main__':
     ARGS = sys.argv
-    if len(ARGS) < 4:
-        crap('Usage: publish.py SOURCE_ROOT SITE_ROOT IMAGES_DIR ASSETS_DIR [FORCE_RESYNC]')
+    if len(ARGS) < 2:
+        crap('Usage: publish.py SOURCE_ROOT SITE_ROOT')
     SOURCE_ROOT = ARGS[1]
     SITE_ROOT = ARGS[2]
-    IMAGES_DIR = ARGS[3]
-    ASSETS_DIR = ARGS[4]
-    if len(ARGS) == 5:
-        print('Force a re-sync')
-        FORCE_RESYNC = True
-
-    # get last run
-    if os.path.exists('.lastrun'):
-        LAST_RUN = datetime.fromtimestamp(os.path.getmtime('.lastrun'))
-    else:
-        Path('.lastrun').touch()
-        LAST_RUN = datetime.now()
-    print('last run: ', LAST_RUN)
 
     if not os.path.isdir(SITE_ROOT):
-        crap('Site root does not exist')
+        print("creating {}".format(SITE_ROOT))
+        os.makedirs(SITE_ROOT)
 
     site = AlsoSLCSite()
     site.source_path = os.path.abspath(SOURCE_ROOT)
-    site.root_path = os.path.abspath(SITE_ROOT)
-    site.assets_subdir = ASSETS_DIR
-    site.images_subdir = IMAGES_DIR
+    site.site_path = os.path.abspath(SITE_ROOT)
     site.image_widths = [1600, 800, 240, 120]
     print(site)
     site.save()
