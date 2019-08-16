@@ -1,2 +1,2 @@
 # alsoslc
-generator for alsoslc.com
+Site generator for https://alsoslc.com
