@@ -12,12 +12,26 @@ $ source venv/bin/activate
 ## Environment Variables
 
 ```
-ALSOSLC_SOURCE=/path/to/images/
-ALSOSLC_SITE=/path/to/local/site
-ALSOSLC_REMOTE=user@host:/path/to/site
+export ALSOSLC_SOURCE=/path/to/images/
+export ALSOSLC_SITE=/path/to/local/site
+export ALSOSLC_REMOTE=user@host:/path/to/site
 ```
+
+`ALSOSLC_SOURCE` is the source directory of geotagged images. All images must have these EXIF fields for them to be included:
+
+* `GPS GPSLongitude` will be used for the geolocation
+* `GPS GPSLatitude` will be used for the geolocation
+* `EXIF DateTimeOriginal` will be used for populating the date taken
+* `Image ImageDescription` will be used for the description / caption
+
+`ALSOSLC_SITE` is where the local copy of the site will be saved. You can use the empty `site/` directory in this directory or any directory you can write to for `ALSOSLC_SITE`.
+
+`ALSOSLC_REMOTE` is the remote path where the live site lives.
 
 ## Deploy
 
 ```
 ./deploy.sh
+```
+
+The initial run will be slow as the images are resized and each HTML page is generated. Subsequent runs will be incremental and much faster.
