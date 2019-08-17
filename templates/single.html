@@ -9,31 +9,22 @@
 	</style>
 {% endblock %}
 {% block content %}
-    	<div class="columns">
-    		<div class="column col-12">
-    			<h1>{{ image.date_taken }}</h1>
-    		</div>
-    	</div>
-    	<div class="columns">
-    		<div class="column col-9">
-    			<img src="{{ relpath }}" class="img-responsive" />
-    		</div>
-    		<div class="column col-3">
-	        	<div id="map"></div>
-	        	<div id="metadata" style="margin-top: 20px">
-        			<p><em>Taken on</em> {{ image.date_taken }}</p>
-	        		<p><em>Description</em> {{ image.caption }}</p>
-	        		<p><a href="index.html">&lt;&lt; Home</a></p>
-	        	</div>
-	        </div>
-	    </div>
-    	<div class="columns">
-    		<div class="column col-xl-12">
-			    <div class="footer">
-			    	&copy; Copyright 2017-2019 <a href="https://ma.rtijn.org/">Martijn van Exel</a>
-			    </div>
-		    </div>
-    	</div>
+	<div>
+		<h1>{{ image.date_taken }}</h1>
+	</div>
+	<div>
+		<img src="{{ relpath }}" class="img-responsive" />
+	</div>
+    <div id="map">
+    </div>
+	<div id="metadata" style="margin-top: 20px">
+		<p><em>Taken on</em> {{ image.date_taken }}</p>
+		<p><em>Description</em> {{ image.caption }}</p>
+		<p><a href="index.html">&lt;&lt; Home</a></p>
+	</div>
+    <div class="footer">
+    	&copy; Copyright 2017-2019 <a href="https://ma.rtijn.org/">Martijn van Exel</a>
+    </div>
 {% endblock %}
 {% block scripts %}
 	<script type="text/javascript">

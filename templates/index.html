@@ -1,50 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
-{% block head %}
-    {{ super() }}
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
-    <link rel="stylesheet" type="text/css" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-	<style type="text/css">
-		#map {
-    		height: 800px;
-    		background-color: #fff;	
-    	}
-	</style>
-{% endblock %}
 {% block content %}
-	<div class="columns">
-		<div class="column col-9">
-			<h1>Also SLC</h1>
-			<p>Welcome to AlsoSLC, an ever-growing collection of photos of the changing face of Salt Lake City. Click on any of the markers to see the photo taken there.</p>
-			<p>This site and all the photos on it are created by <a href="https://ma.rtijn.org/">Martijn van Exel</a>. If you have suggestions for places to add, or any other feedback for me, please drop me a line at m@rtijn.org. I look forward to hearing from you!</p>
-			<p><em>I post a selection of the images on this site <a href="https://www.instagram.com/alsoslc/">on Instagram</a>. While you are there, be sure to also check out <a href="https://www.instagram.com/forgotten_slc/">Forgotten SLC</a>.</em></p>
-
-		</div>
-		<div class="column col-9">
-			<div id="map"></div>
-		</div>
+    <div>
+		<h1>Also SLC</h1>
+		<p>Welcome to AlsoSLC, an ever-growing collection of photos of the changing face of Salt Lake City. Click on any of the markers to see the photo taken there.</p>
+		<p>This site and all the photos on it are created by <a href="https://ma.rtijn.org/">Martijn van Exel</a>. If you have suggestions for places to add, or any other feedback for me, please drop me a line at m@rtijn.org. I look forward to hearing from you!</p>
+		<p><em>I post a selection of the images on this site <a href="https://www.instagram.com/alsoslc/">on Instagram</a>. While you are there, be sure to also check out <a href="https://www.instagram.com/forgotten_slc/">Forgotten SLC</a>.</em></p>
+		<p>We also have <a href="map.html">an interactive map showing all image locations 🗺</a>!</p>
 	</div>
-	<script type="text/javascript">
-		// Init map
-		var mymap = L.map('map').setView([40.7596384,-111.88968], 15);
-		// Add OSM topo layer
-		L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-			maxZoom: 17,
-			attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-			opacity: 0.5
-		}).addTo(mymap);
-		// define camera icon
-		// var myIcon = L.icon({
-		//     iconUrl: 'assets/heart-15-2.png',
-		// });
-		// Add markers
-		var markerGroup = new L.markerClusterGroup();
-		{% for image in site.images %}
-		var marker{{ loop.index }}  = L.marker([{{ image.lat }}, {{ image.lon }}], {maxWidth: "auto"}).addTo(markerGroup).bindPopup("<center><a href='{{ image.name }}.html'><img src='images/{{ site.smallest_thumbnail_width_for(image) }}' width='120px'/></a><p><small>{{ image.date_taken }}</small></p></center>");
-		markerGroup.addLayer(marker{{ loop.index }});
-		{% endfor %}
-		mymap.addLayer(markerGroup);
-		//mymap.fitBounds(markerGroup.getBounds(), [100,100]);
-	</script>
 {% endblock %}
