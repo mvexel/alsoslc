@@ -35,3 +35,12 @@ export ALSOSLC_REMOTE=user@host:/path/to/site
 ```
 
 The initial run will be slow as the images are resized and each HTML page is generated. Subsequent runs will be incremental and much faster.
+
+## A note on included assets
+
+The assets included are
+
+* [Leaflet](https://github.com/Leaflet/Leaflet) 1.5.1
+* [Bootstrap](https://github.com/twbs/bootstrap) 4.0
+
+These have their own license separate from this repo's and are included here only for convenience.
