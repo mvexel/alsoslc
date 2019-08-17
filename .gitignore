@@ -1,9 +1,7 @@
 venv/
-run.sh
-images/*
-site/
-.lastrun
+site/*
 .DS_Store
 alsoslc.sublime-project
 alsoslc.sublime-workspace
 assets/*
+set_envvars.sh
