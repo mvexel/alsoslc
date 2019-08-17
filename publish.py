@@ -14,6 +14,10 @@ IMAGES_DIR = None
 SITE_ROOT = None
 FORCE_RESYNC = False
 LAST_RUN = None
+ASSETS_DIR = 'assets'
+IMAGES_DIR = 'images'
+PAGES = ['index', 'map']
+IMAGE_WIDTHS = [1024, 240]  # full size, [thumbnail size, ...]
 
 # pylint:disable=C0103
 
@@ -74,26 +78,22 @@ class AlsoSLCSite():  #pylint:disable=R0903
     image_widths = []
     images = []
 
-    def index_html(self):
+    def render_html(self, page_name):
         """Generate the index page html"""
         jinja_env = Environment(
             loader=FileSystemLoader('templates'),
             autoescape=select_autoescape(['html', 'xml']))
-        home_template = jinja_env.get_template('index.html')
+        home_template = jinja_env.get_template('{}.html'.format(page_name))
         return home_template.render(site=self)
 
 
     def save(self):
         """Save everything"""
 
-        # clean out site root
-        print("clearing {}".format(self.site_path))
-        rmtree(self.site_path)
-
         # create image directory if not exist
         os.makedirs(os.path.join(
             self.site_path,
-            'images'), exist_ok=True)
+            IMAGES_DIR), exist_ok=True)
 
         # gather all images
         for filename in os.listdir(self.source_path):
@@ -110,33 +110,32 @@ class AlsoSLCSite():  #pylint:disable=R0903
         for image in self.images:
             image.save(
                 self.site_path,
-                os.path.join(
-                    self.site_path,
-                    'images'),
                 self.image_widths)
 
-        # write index page
-        with open(os.path.join(
-                self.site_path,
-                'index.html'), 'w') as file_handle:
-            file_handle.write(self.index_html())
+        # write root pages
+        for page_name in PAGES:
+            with open(os.path.join(
+                    self.site_path,
+                    '{}.html'.format(page_name)), 'w') as file_handle:
+                file_handle.write(self.render_html(page_name))
 
         # copy other assets
+        rmtree(os.path.join(self.site_path, ASSETS_DIR))
         copytree(
             os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 'assets'),
-            os.path.join(self.site_path, 'assets'))
+                os.path.dirname(os.path.abspath(__file__)), ASSETS_DIR),
+            os.path.join(self.site_path, ASSETS_DIR))
 
-    def smallest_thumbnail_width_for(self, image):
-        """A helper method for Jinja rendering."""
-        name, ext = os.path.splitext(
-            os.path.basename(
-                image.image_handle.filename))
-        smallest_width = min(self.image_widths)
-        return "{name}_{width}{ext}".format(
-            name=name,
-            width=smallest_width,
-            ext=ext)
+    # def smallest_thumbnail_width_for(self, image):
+    #     """A helper method for Jinja rendering."""
+    #     name, ext = os.path.splitext(
+    #         os.path.basename(
+    #             image.image_handle.filename))
+    #     smallest_width = min(self.image_widths)
+    #     return "{name}_{width}{ext}".format(
+    #         name=name,
+    #         width=smallest_width,
+    #         ext=ext)
 
 
     def __str__(self):
@@ -173,49 +172,57 @@ class AlsoSLCImage():
         return None
 
 
-    def save(self, site_path, image_subdir, widths):
+    def save(self, site_path, widths):
         """Create and save the HTML + images"""
 
         print("saving {}".format(self.name))
 
-        # Render HTML
-        jinja_env = Environment(
-            loader=FileSystemLoader('templates'),
-            autoescape=select_autoescape(['html', 'xml']))
-        home_template = jinja_env.get_template('single.html')
-        self.html = home_template.render(
-            image=self,
-            relpath=os.path.join(
-                image_subdir,
-                os.path.basename(self.image_handle.filename)))
+        html_filename = os.path.join(
+            site_path,
+            "{name}.html".format(name=self.name))
 
-        # Save HTML
-        with open(
-                os.path.join(
-                    site_path,
-                    "{name}.html".format(name=self.name)),
-                'w') as file_handle:
-            file_handle.write(self.html)
+        if not os.path.isfile(html_filename):
+
+            # Render HTML
+            jinja_env = Environment(
+                loader=FileSystemLoader('templates'),
+                autoescape=select_autoescape(['html', 'xml']))
+            home_template = jinja_env.get_template('single.html')
+            self.html = home_template.render(
+                image=self,
+                relpath=os.path.join(
+                    IMAGES_DIR,
+                    os.path.basename(self.image_handle.filename)))
+
+            # Save HTML
+            with open(
+                    html_filename,
+                    'w') as file_handle:
+                file_handle.write(self.html)
 
         # Create and save thumbnails
         orig_width = self.image_handle.size[0]
         for width in widths:
             if width < orig_width:
-                im_copy = self.image_handle.copy()
-                im_copy.thumbnail((width, width), Image.ANTIALIAS)
                 thumb_path = os.path.join(
                     site_path,
-                    image_subdir,
+                    IMAGES_DIR,
                     "{}_{}.jpg".format(
                         self.name,
                         width))
-                im_copy.save(thumb_path, "JPEG")
+                if not os.path.isfile(thumb_path):
+                    im_copy = self.image_handle.copy()
+                    im_copy.thumbnail((width, width), Image.ANTIALIAS)
+                    im_copy.save(thumb_path, "JPEG")
 
-        # Save the original size
-        self.image_handle.save(os.path.join(
-            site_path,
-            image_subdir,
-            os.path.basename(self.image_handle.filename)), "JPEG")
+        #Save the original size
+        # orig_name = os.path.join(
+        #     site_path,
+        #     IMAGES_DIR,
+        #     os.path.basename(self.image_handle.filename))
+
+        # if not os.path.isfile(orig_name):
+        #     self.image_handle.save(orig_name, "JPEG")
 
     def __str__(self):
         return "AlsoSLC Image {name} at ({lon},{lat})".format(
@@ -258,6 +265,6 @@ if __name__ == '__main__':
     site = AlsoSLCSite()
     site.source_path = os.path.abspath(SOURCE_ROOT)
     site.site_path = os.path.abspath(SITE_ROOT)
-    site.image_widths = [1600, 800, 240, 120]
+    site.image_widths = IMAGE_WIDTHS
     print(site)
     site.save()
