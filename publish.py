@@ -16,7 +16,7 @@ FORCE_RESYNC = False
 LAST_RUN = None
 ASSETS_DIR = 'assets'
 IMAGES_DIR = 'images'
-PAGES = ['index', 'map']
+PAGES = ['index', 'map', 'list']
 IMAGE_WIDTHS = [1024, 240]  # full size, [thumbnail size, ...]
 IPTC_KEYS = {
     "title": (2, 5),
@@ -89,14 +89,15 @@ def read_exif(image_handle):
         labeled_exifs.get('DateTimeOriginal'),
         '%Y:%m:%d %H:%M:%S')
 
-    for k in iptc:
-        print(k, iptc[k])
-
     # headline
-    headline = iptc.get(IPTC_KEYS["headline"]).decode("UTF-8")
+    headline = iptc.get(IPTC_KEYS["headline"])
+    if headline is not None:
+        headline = headline.decode("UTF-8")
 
     # description
-    description = iptc.get(IPTC_KEYS["description"]).decode("UTF-8")
+    description = iptc.get(IPTC_KEYS["description"])
+    if description is not None:
+        description = description.decode("UTF-8")
 
     return {
         "lat": lat,
@@ -166,7 +167,7 @@ class AlsoSLCSite():  #pylint:disable=R0903
 class AlsoSLCImage():
     """An image"""
 
-    _date_taken = None
+    date_taken = None
     description = None
     headline = None
     lon = None
@@ -256,6 +257,11 @@ class AlsoSLCImage():
     @date_taken.setter
     def date_taken(self, val):
         self._date_taken = val
+
+    @property
+    def age_in_days(self):
+        return (datetime.now() - self._date_taken).days
+    
 
     @property
     def name(self):
