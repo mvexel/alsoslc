@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
 {% block head %}
-    {{ super() }}
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css">
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css">
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
@@ -20,7 +19,7 @@
 	  		<div class="card" style="width: 18rem; display: none" id="selectedphotocontainer">
   				<img class="card-img-top" src="" id="selectedphoto">
   				<div class="card-body">
-  					<h5 class="card-title" id="datetaken"></h5>
+  					<h5 class="card-title" id="headline"></h5>
   					<p class="card-text" id="description"></p>
     				<a href="#" class="btn btn-primary" id="photopagelink">See Large Photo</a>
     			</div>
@@ -53,6 +52,7 @@
 				maxWidth: "auto", 
 				name: "{{ image.name }}",
 				datetaken: "{{ image.date_taken }}",
+				headline: "{{ image.headline }}",
 				description: "{{ image.description }}"}).addTo(markerGroup);
 		markerGroup.addLayer(marker{{ loop.index }});
 		{% endfor %}
@@ -64,11 +64,12 @@
     		console.log(clickedMarker);
     		var image_name = clickedMarker.options["name"];
     		var image_width = {{ site.image_widths[1] }};
+    		var headline = clickedMarker.options["headline"];
     		var date_taken = clickedMarker.options["datetaken"];
     		var description = clickedMarker.options["description"];
     		document.getElementById("selectedphoto").src = `images/${image_name}_${image_width}.jpg`;
-    		document.getElementById("datetaken").innerText = date_taken;
-    		document.getElementById("description").innerText = description;
+    		document.getElementById("headline").innerText = headline;
+    		document.getElementById("description").innerText = description + ", taken on " + date_taken;
     		document.getElementById("photopagelink").href = `${image_name}.html`;
     		var container = document.getElementById("selectedphotocontainer");
     		container.style.display = "block";
