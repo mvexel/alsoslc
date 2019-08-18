@@ -1,56 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-    <div class="row">
-    	<div class="col-sm">
-			<p>Welcome to AlsoSLC, an ever-growing collection of photos of the changing face of Salt Lake City. Click on any of the markers to see the photo taken there.</p>
-			<p>This site and all the photos on it are created by <a href="https://ma.rtijn.org/">Martijn van Exel</a>. If you have suggestions for places to add, or any other feedback for me, please drop me a line at m@rtijn.org. I look forward to hearing from you!</p>
-			<p><em>I post a selection of the images on this site <a href="https://www.instagram.com/alsoslc/">on Instagram</a>. While you are there, be sure to also check out <a href="https://www.instagram.com/forgotten_slc/">Forgotten SLC</a>.</em></p>
-			<p>We also have <a href="map.html">an interactive map showing all image locations 🗺</a>!</p>
-		</div>
-	</div>
-	<div class="row">
-		<div class="col-sm">
-			<div class="card" style="width: 18rem;">
-	  			<img src="..." class="card-img-top" alt="...">
-	  			<div class="card-body">
-					<h5 class="card-title">Card 1</h5>
-	    			<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-	    			<a href="#" class="btn btn-primary">Go somewhere</a>
-	  			</div>
+	    <div class="row">
+	    	<div class="col-md">
+				<p>Welcome to AlsoSLC, an ever-growing collection of photos of the changing face of Salt Lake City. Click on any of the markers to see the photo taken there.</p>
+				<p>This site and all the photos on it are created by <a href="https://ma.rtijn.org/">Martijn van Exel</a>. If you have suggestions for places to add, or any other feedback for me, please drop me a line at m@rtijn.org. I look forward to hearing from you!</p>
+				<p><em>I post a selection of the images on this site <a href="https://www.instagram.com/alsoslc/">on Instagram</a>. While you are there, be sure to also check out <a href="https://www.instagram.com/forgotten_slc/">Forgotten SLC</a>.</em></p>
 			</div>
 		</div>
-		<div class="col-sm">
-			<div class="card" style="width: 18rem;">
-	  			<img src="..." class="card-img-top" alt="...">
-	  			<div class="card-body">
-					<h5 class="card-title">Card 2</h5>
-	    			<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-	    			<a href="#" class="btn btn-primary">Go somewhere</a>
-	  			</div>
+		<div class="row">
+			<div class="col-md">
+				<h2>Taken in the past week</h2>
 			</div>
 		</div>
-		<div class="col-sm">
-			<div class="card" style="width: 18rem;">
-	  			<img src="..." class="card-img-top" alt="...">
-	  			<div class="card-body">
-					<h5 class="card-title">Card 3</h5>
-	    			<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-	    			<a href="#" class="btn btn-primary">Go somewhere</a>
-	  			</div>
+		<div class="row">
+			{% for image in site.images|sort(attribute='_date_taken', reverse=True) if image.age_in_days < 7 -%}
+			<div class="col-md">
+				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" style="margin-bottom: 10px" /></a>
+			</div>
+			{% endfor %}
+		</div>
+		<div class="row">
+			<div class="col-md">
+				<p><a href="list.html">See the full list</a></p>
+				<p>I also have <a href="map.html">an interactive map showing all image locations 🗺</a>!</p>
 			</div>
 		</div>
-
-		<div class="col-sm">
-			<div class="card" style="width: 18rem;">
-	  			<img src="..." class="card-img-top" alt="...">
-	  			<div class="card-body">
-					<h5 class="card-title">Card 3</h5>
-	    			<p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-	    			<a href="#" class="btn btn-primary">Go somewhere</a>
-	  			</div>
-			</div>
-		</div>
-
-	</div>
 {% endblock %}
