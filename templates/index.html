@@ -18,6 +18,10 @@
 			<div class="col-md">
 				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" style="margin-bottom: 10px" /></a>
 			</div>
+			{% if loop.index % 6 == 0 -%}
+		</div>
+		<div class="row">
+			{% endif %}
 			{% endfor %}
 		</div>
 		<div class="row">
