@@ -4,10 +4,10 @@
 import sys
 import os
 from datetime import datetime
-from shutil import rmtree, copytree
+from distutils.dir_util import copy_tree
 import imghdr
-import exifread
-from PIL import Image
+from PIL import Image, IptcImagePlugin
+from PIL.ExifTags import TAGS, GPSTAGS
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 IMAGES_DIR = None
@@ -18,57 +18,92 @@ ASSETS_DIR = 'assets'
 IMAGES_DIR = 'images'
 PAGES = ['index', 'map']
 IMAGE_WIDTHS = [1024, 240]  # full size, [thumbnail size, ...]
+IPTC_KEYS = {
+    "title": (2, 5),
+    "jobtitle": (2, 85),
+    "headline": (2, 105),
+    "description": (2, 120),
+    "copyright": (2, 116)
+}
 
 # pylint:disable=C0103
 
-def dms_to_decimal(dms_ratios):
-    """Convert given DMS to decimal degrees"""
-    in_degs = dms_ratios[0]
-    in_mins = dms_ratios[1]
-    in_secs = dms_ratios[2]
-    return in_degs.num / in_degs.den + (
-        in_mins.num / in_mins.den * 60 + in_secs.num / in_secs.den) / 3600
+def get_decimal_from_dms(dms, ref):
+    """get decimal degrees from d,m,s and ref"""
+
+    degrees = dms[0][0] / dms[0][1]
+    minutes = dms[1][0] / dms[1][1] / 60.0
+    seconds = dms[2][0] / dms[2][1] / 3600.0
+
+    if ref in ['S', 'W']:
+        degrees = -degrees
+        minutes = -minutes
+        seconds = -seconds
+
+    return round(degrees + minutes + seconds, 5)
+
+def get_coordinates(geotags):
+    """Get the lat lon as dms from the geotags"""
+    lat = get_decimal_from_dms(geotags['GPSLatitude'], geotags['GPSLatitudeRef'])
+    lon = get_decimal_from_dms(geotags['GPSLongitude'], geotags['GPSLongitudeRef'])
+    return (lon, lat)
+
+def label_exifs(exif):
+    """Helper to get human readable labels for exif dict"""
+    result = {}
+    for (key, val) in exif.items():
+        result[TAGS.get(key)] = val
+    return result
+
+def get_geotagging(exif):
+    """Get GPS tags from exifs"""
+    if not exif:
+        raise ValueError("No EXIF metadata found")
+
+    geotagging = {}
+    for (idx, tag) in TAGS.items():
+        if tag == 'GPSInfo':
+            if idx not in exif:
+                raise ValueError("No EXIF geotagging found")
+
+            for (key, val) in GPSTAGS.items():
+                if key in exif[idx]:
+                    geotagging[val] = exif[idx][key]
+
+    return geotagging
+
 
 def read_exif(image_handle):
     """Reads relevant exif tags from an image provided as PIL.Image object"""
-    lat = 0.0
-    lon = 0.0
-    date_taken = None
-    description = ""
 
-    with open(image_handle.filename, 'rb') as file_handle:
-        exifs = exifread.process_file(file_handle, details=True)
+    exif = image_handle.info["parsed_exif"]
+    iptc = IptcImagePlugin.getiptcinfo(image_handle)
+    labeled_exifs = label_exifs(exif)
 
-    # Check for availability of geotag
-    if 'GPS GPSLongitude' not in exifs:
-        print("no GPS in image {}".format(image_handle.filename))
-        return None
-    # Extract decimal coordinates
-    lon_dms = exifs.get('GPS GPSLongitude').values
-    lat_dms = exifs.get('GPS GPSLatitude').values
-    lon_orientation = exifs.get('GPS GPSLongitudeRef').values
-    lat_orientation = exifs.get('GPS GPSLatitudeRef').values
+    # longitude, latitude
+    geotags = get_geotagging(exif)
+    lon, lat = get_coordinates(geotags)
 
-    # convert to decimal coords
-    lon = dms_to_decimal(lon_dms)
-    lat = dms_to_decimal(lat_dms)
-    if lon_orientation == 'W':
-        lon = -lon
-    if lat_orientation == 'S':
-        lat = -lat
-
-    # Gather EXIF date, description
-    # self.date_taken = exifs.get('EXIF DateTimeOriginal').values
-    # 2019:08:04 12:28:53
+    # date taken
     date_taken = datetime.strptime(
-        exifs.get('EXIF DateTimeOriginal').values,
+        labeled_exifs.get('DateTimeOriginal'),
         '%Y:%m:%d %H:%M:%S')
-    desc_exif = exifs.get('Image ImageDescription')
-    if desc_exif:
-        description = desc_exif.values
-    else:
-        description = "None given"
-    return {"lat": lat, "lon": lon, "date_taken": date_taken, "description": description}
+
+    for k in iptc:
+        print(k, iptc[k])
+
+    # headline
+    headline = iptc.get(IPTC_KEYS["headline"]).decode("UTF-8")
+
+    # description
+    description = iptc.get(IPTC_KEYS["description"]).decode("UTF-8")
+
+    return {
+        "lat": lat,
+        "lon": lon,
+        "date_taken": date_taken,
+        "headline": headline,
+        "description": description}
 
 class AlsoSLCSite():  #pylint:disable=R0903
     """The site"""
@@ -108,9 +143,7 @@ class AlsoSLCSite():  #pylint:disable=R0903
 
         # create thumbnails and save them, and the full size image
         for image in self.images:
-            image.save(
-                self.site_path,
-                self.image_widths)
+            image.save(self)
 
         # write root pages
         for page_name in PAGES:
@@ -120,23 +153,10 @@ class AlsoSLCSite():  #pylint:disable=R0903
                 file_handle.write(self.render_html(page_name))
 
         # copy other assets
-        rmtree(os.path.join(self.site_path, ASSETS_DIR))
-        copytree(
+        copy_tree(
             os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), ASSETS_DIR),
             os.path.join(self.site_path, ASSETS_DIR))
-
-    # def smallest_thumbnail_width_for(self, image):
-    #     """A helper method for Jinja rendering."""
-    #     name, ext = os.path.splitext(
-    #         os.path.basename(
-    #             image.image_handle.filename))
-    #     smallest_width = min(self.image_widths)
-    #     return "{name}_{width}{ext}".format(
-    #         name=name,
-    #         width=smallest_width,
-    #         ext=ext)
-
 
     def __str__(self):
         return "AlsoSLC site at {}".format(
@@ -148,6 +168,7 @@ class AlsoSLCImage():
 
     _date_taken = None
     description = None
+    headline = None
     lon = None
     lat = None
     image_handle = None
@@ -159,6 +180,7 @@ class AlsoSLCImage():
         self.lat = exifs.get("lat")
         self.date_taken = exifs.get("date_taken")
         self.description = exifs.get("description")
+        self.headline = exifs.get("headline")
 
 
     @classmethod
@@ -172,40 +194,36 @@ class AlsoSLCImage():
         return None
 
 
-    def save(self, site_path, widths):
+    def save(self, my_site):
         """Create and save the HTML + images"""
 
         print("saving {}".format(self.name))
 
         html_filename = os.path.join(
-            site_path,
+            site.site_path,
             "{name}.html".format(name=self.name))
 
-        if not os.path.isfile(html_filename):
+        # Render HTML
+        jinja_env = Environment(
+            loader=FileSystemLoader('templates'),
+            autoescape=select_autoescape(['html', 'xml']))
+        home_template = jinja_env.get_template('single.html')
+        self.html = home_template.render(
+            image=self,
+            site=my_site)
 
-            # Render HTML
-            jinja_env = Environment(
-                loader=FileSystemLoader('templates'),
-                autoescape=select_autoescape(['html', 'xml']))
-            home_template = jinja_env.get_template('single.html')
-            self.html = home_template.render(
-                image=self,
-                relpath=os.path.join(
-                    IMAGES_DIR,
-                    os.path.basename(self.image_handle.filename)))
-
-            # Save HTML
-            with open(
-                    html_filename,
-                    'w') as file_handle:
-                file_handle.write(self.html)
+        # Save HTML
+        with open(
+                html_filename,
+                'w') as file_handle:
+            file_handle.write(self.html)
 
         # Create and save thumbnails
         orig_width = self.image_handle.size[0]
-        for width in widths:
+        for width in site.image_widths:
             if width < orig_width:
                 thumb_path = os.path.join(
-                    site_path,
+                    site.site_path,
                     IMAGES_DIR,
                     "{}_{}.jpg".format(
                         self.name,
