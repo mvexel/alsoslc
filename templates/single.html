@@ -4,39 +4,35 @@
 	{{ super() }}
 	<style type="text/css">
 		#map {
-			height: 600px;
+			height: 300px;
 		}
 	</style>
 {% endblock %}
 {% block content %}
 	<div class="row">
-		<div class="col-sm">
-			<h1>Also SLC</h1>
-		</div>
-	</div>
-	<div class="row">
 		<div class="col-sm-8">
-			<img src="{{ relpath }}" class="img-responsive" />
+			<img src="images/{{ image.name }}_{{ site.image_widths[0] }}.jpg" class="img-fluid" />
 		</div>
 		<div class="col-sm-4">
+			<div class="row">
+				<div class="col-sm">
+					<h4>{{ image.headline }}</h4>
+					<p><em>Taken on {{ image.date_taken }}</em></p>
+					<p>{{ image.description }}</p>
+					<p><a href="index.html">&lt;&lt; Home</a></p>
+			    </div>			
+			</div>
 			<div class="row">
 				<div class="col-sm">
 			    	<div id="map"></div>
 			    </div>
 			</div>
-			<div class="row">
-				<div class="col-sm">
-					<div id="metadata" style="margin-top: 20px">
-						<p><em>Taken on</em> {{ image.date_taken }}</p>
-						<p><em>Description</em> {{ image.caption }}</p>
-						<p><a href="index.html">&lt;&lt; Home</a></p>
-					</div>
-			    </div>			
-			</div>
     	</div>
     </div>
-    <div class="footer">
-    	&copy; Copyright 2017-2019 <a href="https://ma.rtijn.org/">Martijn van Exel</a>
+    <div class="row">
+    	<div class="col-sm">
+    		&copy; Copyright 2017-2019 <a href="https://ma.rtijn.org/">Martijn van Exel</a>
+    	</div>
     </div>
 {% endblock %}
 {% block scripts %}
