@@ -8,13 +8,10 @@
 		</div>
 		<div class="row">
 			{% for image in site.images|sort(attribute='_date_taken', reverse=True) -%}
-			<div class="col-md-2">
-				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" style="margin-bottom: 10px" /></a>
+			<div class="col-md-4">
+				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" /></a>
+				<p><small><em>{{ image.date_taken }}</em></small></p>
 			</div>
-			{% if loop.index % 6 == 0 -%}
-		</div>
-		<div class="row">
-			{% endif %}
 			{% endfor %}
 		</div>
 		<div class="row">
