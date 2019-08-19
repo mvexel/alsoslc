@@ -93,11 +93,15 @@ def read_exif(image_handle):
     headline = iptc.get(IPTC_KEYS["headline"])
     if headline is not None:
         headline = headline.decode("UTF-8")
+    else:
+        headline = "No title...yet"
 
     # description
     description = iptc.get(IPTC_KEYS["description"])
     if description is not None:
         description = description.decode("UTF-8")
+    else:
+        description = "No description...yet"
 
     return {
         "lat": lat,
