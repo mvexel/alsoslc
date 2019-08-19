@@ -19,10 +19,11 @@ export ALSOSLC_REMOTE=user@host:/path/to/site
 
 `ALSOSLC_SOURCE` is the source directory of geotagged images. All images must have these EXIF fields for them to be included:
 
-* `GPS GPSLongitude` will be used for the geolocation
-* `GPS GPSLatitude` will be used for the geolocation
-* `EXIF DateTimeOriginal` will be used for populating the date taken
-* `Image ImageDescription` will be used for the description / caption
+* EXIF `GPSLongitude` will be used for the geolocation
+* EXIF `GPSLatitude` will be used for the geolocation
+* EXIF `DateTimeOriginal` will be used for populating the date taken
+* IPTC `Headline` will be used for the title
+* IPTC `Description` will be used for the caption
 
 `ALSOSLC_SITE` is where the local copy of the site will be saved. You can use the empty `site/` directory in this directory or any directory you can write to for `ALSOSLC_SITE`.
 
