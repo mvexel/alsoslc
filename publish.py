@@ -13,6 +13,7 @@ from jinja2 import (
     FileSystemLoader,
     select_autoescape,
 )
+import requests
 
 IMAGES_DIR = None
 SITE_ROOT = None
@@ -34,6 +35,20 @@ IPTC_KEYS = {
 }
 
 # pylint:disable=C0103
+
+
+def reverse_geocode(image):
+    """Reverse geocode an image using Nominatim"""
+    request_url = "https://nominatim.openstreetmap.org/reverse?format=json&lon={lon}&lat={lat}".format(
+        lon=lon,
+        lat=lat)
+    print(request_url)
+    nominatim_response = requests.get(request_url).json()
+    address = nominatim_response.get("address")
+    return "{street}, {neighborhood}, {city}".format(
+            street=address.get("road"),
+            neighborhood=address.get("neighbourhood"),
+            city=address.get("city"))
 
 
 def get_decimal_from_dms(dms, ref):
@@ -110,7 +125,7 @@ def read_exif(image_handle):
     if headline is not None:
         headline = headline.decode("UTF-8")
     else:
-        headline = "No title...yet"
+        headline = reverse_geocode(image_handle)
 
     # description
     description = iptc.get(IPTC_KEYS["description"])
