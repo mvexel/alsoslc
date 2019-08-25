@@ -55,8 +55,12 @@ The initial run will be slow as the images are resized and each HTML page is gen
 
 The assets included are
 
-* [Leaflet](https://github.com/Leaflet/Leaflet) 1.5.1
-* [Bootstrap](https://github.com/twbs/bootstrap) 4.0
-* [Lazy Load](https://github.com/tuupola/lazyload) 2.0.0-rc.2
+* [Leaflet](https://github.com/Leaflet/Leaflet) 1.5.1 (License: BSD)
+* [Bootstrap](https://github.com/twbs/bootstrap) 4.0 (License: MIT)
+* [Lazy Load](https://github.com/tuupola/lazyload) 2.0.0-rc.2 (License: MIT)
 
 These have their own license separate from this repo's and are included here only for convenience.
+
+## License
+
+MIT
