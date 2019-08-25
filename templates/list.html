@@ -8,7 +8,7 @@
 		</div>
 		<div class="row">
 			{% for image in site.images|sort(attribute='_date_taken', reverse=True) -%}
-			<div class="col-md-4">
+			<div class="col-md-3">
 				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" /></a>
 				<p><small><em>{{ image.date_taken }}</em></small></p>
 			</div>
