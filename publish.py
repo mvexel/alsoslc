@@ -40,15 +40,21 @@ IPTC_KEYS = {
 def reverse_geocode(image):
     """Reverse geocode an image using Nominatim"""
     request_url = "https://nominatim.openstreetmap.org/reverse?format=json&lon={lon}&lat={lat}".format(
-        lon=lon,
-        lat=lat)
-    print(request_url)
+        lon=image.lon,
+        lat=image.lat)
     nominatim_response = requests.get(request_url).json()
     address = nominatim_response.get("address")
-    return "{street}, {neighborhood}, {city}".format(
-            street=address.get("road"),
-            neighborhood=address.get("neighbourhood"),
-            city=address.get("city"))
+    parts = []
+    road = address.get("road")
+    neighbourhood = address.get("neighbourhood")
+    city = address.get("city")
+    if road:
+        parts.append(road)
+    if neighbourhood:
+        parts.append(neighbourhood)
+    if city:
+        parts.append(city)
+    return ", ".join(parts)
 
 
 def get_decimal_from_dms(dms, ref):
@@ -103,47 +109,7 @@ def get_geotagging(exif):
     return geotagging
 
 
-def read_exif(image_handle):
-    """Reads relevant exif tags from an image provided as PIL.Image object"""
-
-    exif = image_handle.info["parsed_exif"]
-    iptc = IptcImagePlugin.getiptcinfo(image_handle)
-    labeled_exifs = label_exifs(exif)
-
-    # longitude, latitude
-    geotags = get_geotagging(exif)
-    lon, lat = get_coordinates(geotags)
-
-    # date taken
-    date_taken = datetime.strptime(
-        labeled_exifs.get("DateTimeOriginal"),
-        "%Y:%m:%d %H:%M:%S",
-    )
-
-    # headline
-    headline = iptc.get(IPTC_KEYS["headline"])
-    if headline is not None:
-        headline = headline.decode("UTF-8")
-    else:
-        headline = reverse_geocode(image_handle)
-
-    # description
-    description = iptc.get(IPTC_KEYS["description"])
-    if description is not None:
-        description = description.decode("UTF-8")
-    else:
-        description = "No description...yet"
-
-    return {
-        "lat": lat,
-        "lon": lon,
-        "date_taken": date_taken,
-        "headline": headline,
-        "description": description,
-    }
-
-
-class AlsoSLCSite(object):  # pylint:disable=R0903
+class AlsoSLCSite(object):
     """The site"""
 
     source_path = None
@@ -176,10 +142,8 @@ class AlsoSLCSite(object):  # pylint:disable=R0903
             the_image = AlsoSLCImage.from_file(
                 os.path.join(self.source_path, filename)
             )
-            if the_image:
+            if the_image and not the_image.skip:
                 self.images.append(the_image)
-            else:
-                print("skipping {}".format(filename))
 
         # create thumbnails and save them, and the full size image
         for image in self.images:
@@ -220,30 +184,36 @@ class AlsoSLCImage(object):
     lat = None
     image_handle = None
     html = None
+    skip = False
 
-    def __init__(self, handle, exifs):
+    def __init__(self, handle):
         self.image_handle = handle
-        self.lon = exifs.get("lon")
-        self.lat = exifs.get("lat")
-        self.date_taken = exifs.get("date_taken")
-        self.description = exifs.get("description")
-        self.headline = exifs.get("headline")
-        self._date_taken = None
+        if os.path.exists(
+                os.path.join(
+                    site.site_path,
+                    "{name}.html".format(name=self.name),
+                )):
+            print("{name} exists, skipping regen".format(
+                name=self.name))
+            self.skip = True
+        else:
+            self.read_exif()
 
     @classmethod
     def from_file(cls, image_path):
         """Create an image object from an image file path"""
         if os.path.isfile(image_path) and imghdr.what(
-            image_path
+                image_path
         ) in ["jpeg", "png"]:
             image_handle = Image.open(image_path)
-            exifs = read_exif(image_handle)
-            if exifs:
-                return cls(image_handle, exifs)
+            return cls(image_handle)
         return None
 
     def save(self, my_site):
         """Create and save the HTML + images"""
+
+        if self.skip:
+            return
 
         print("saving {}".format(self.name))
 
@@ -292,6 +262,38 @@ class AlsoSLCImage(object):
 
         # if not os.path.isfile(orig_name):
         #     self.image_handle.save(orig_name, "JPEG")
+
+    def read_exif(self):
+        """Reads relevant exif tags from an image provided as PIL.Image object"""
+
+        exif = self.image_handle.info["parsed_exif"]
+        iptc = IptcImagePlugin.getiptcinfo(self.image_handle)
+        labeled_exifs = label_exifs(exif)
+
+        # longitude, latitude
+        geotags = get_geotagging(exif)
+        self.lon, self.lat = get_coordinates(geotags)
+
+        # date taken
+        self._date_taken = datetime.strptime(
+            labeled_exifs.get("DateTimeOriginal"),
+            "%Y:%m:%d %H:%M:%S",
+        )
+
+        # headline
+        headline = iptc.get(IPTC_KEYS["headline"])
+        if headline is not None:
+            self.headline = headline.decode("UTF-8")
+        else:
+            self.headline = reverse_geocode(self)
+
+        # description
+        description = iptc.get(IPTC_KEYS["description"])
+        if description is not None:
+            self.description = description.decode("UTF-8")
+        else:
+            self.description = "No description...yet"
+
 
     def __str__(self):
         return "AlsoSLC Image {name} at ({lon},{lat})".format(
