@@ -16,10 +16,6 @@ from jinja2 import (
 )
 import requests
 
-IMAGES_DIR = None
-SITE_ROOT = None
-FORCE_RESYNC = False
-LAST_RUN = None
 ASSETS_DIR = "assets"
 IMAGES_DIR = "images"
 PAGES = ["index", "map", "list"]
