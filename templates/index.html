@@ -10,11 +10,11 @@
 		</div>
 		<div class="row">
 			<div class="col-md">
-				<h2>Taken in the past week</h2>
+				<h2>A Random Selection</h2>
 			</div>
 		</div>
 		<div class="row">
-			{% for image in site.images|sort(attribute='_date_taken', reverse=True) if image.age_in_days < 7 -%}
+			{% for image in site.images if image.display_on_home -%}
 			<div class="col-md-3">
 				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" style="margin-bottom: 10px" /></a>
 			</div>

@@ -5,6 +5,7 @@ import sys
 import os
 from datetime import datetime
 from distutils.dir_util import copy_tree
+from random import random
 import imghdr
 from PIL import Image, IptcImagePlugin
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -22,6 +23,8 @@ LAST_RUN = None
 ASSETS_DIR = "assets"
 IMAGES_DIR = "images"
 PAGES = ["index", "map", "list"]
+NUM_HOME_IMAGES = 10 # Number of images to display on the home page
+
 IMAGE_WIDTHS = [
     1024,
     240,
@@ -138,11 +141,18 @@ class AlsoSLCSite(object):
         )
 
         # gather all images
-        for filename in os.listdir(self.source_path):
+        total_imagecount = 0
+        image_list = os.listdir(self.source_path)
+        for filename in image_list:
+            total_imagecount += 1
             the_image = AlsoSLCImage.from_file(
                 os.path.join(self.source_path, filename)
             )
-            if the_image and not the_image.skip:
+            if the_image:
+                if random() < NUM_HOME_IMAGES / len(image_list):
+                    print("{image} to display on home page".format(
+                        image=the_image.name))
+                    the_image.display_on_home = True
                 self.images.append(the_image)
 
         # create thumbnails and save them, and the full size image
@@ -185,6 +195,7 @@ class AlsoSLCImage(object):
     image_handle = None
     html = None
     skip = False
+    display_on_home = False
 
     def __init__(self, handle):
         self.image_handle = handle
@@ -193,11 +204,10 @@ class AlsoSLCImage(object):
                     site.site_path,
                     "{name}.html".format(name=self.name),
                 )):
-            print("{name} exists, skipping regen".format(
+            print("{name} exists, skipping reverse geocode and image generation".format(
                 name=self.name))
             self.skip = True
-        else:
-            self.read_exif()
+        self.read_exif()
 
     @classmethod
     def from_file(cls, image_path):
@@ -254,18 +264,9 @@ class AlsoSLCImage(object):
                     )
                     im_copy.save(thumb_path, "JPEG")
 
-        # Save the original size
-        # orig_name = os.path.join(
-        #     site_path,
-        #     IMAGES_DIR,
-        #     os.path.basename(self.image_handle.filename))
-
-        # if not os.path.isfile(orig_name):
-        #     self.image_handle.save(orig_name, "JPEG")
 
     def read_exif(self):
         """Reads relevant exif tags from an image provided as PIL.Image object"""
-
         exif = self.image_handle.info["parsed_exif"]
         iptc = IptcImagePlugin.getiptcinfo(self.image_handle)
         labeled_exifs = label_exifs(exif)
@@ -281,18 +282,19 @@ class AlsoSLCImage(object):
         )
 
         # headline
-        headline = iptc.get(IPTC_KEYS["headline"])
-        if headline is not None:
-            self.headline = headline.decode("UTF-8")
-        else:
-            self.headline = reverse_geocode(self)
+        if not self.skip:
+            headline = iptc.get(IPTC_KEYS["headline"])
+            if headline is not None:
+                self.headline = headline.decode("UTF-8")
+            else:
+                self.headline = reverse_geocode(self)
 
-        # description
-        description = iptc.get(IPTC_KEYS["description"])
-        if description is not None:
-            self.description = description.decode("UTF-8")
-        else:
-            self.description = "No description...yet"
+            # description
+            description = iptc.get(IPTC_KEYS["description"])
+            if description is not None:
+                self.description = description.decode("UTF-8")
+            else:
+                self.description = "No description...yet"
 
 
     def __str__(self):
