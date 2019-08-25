@@ -3,4 +3,4 @@ site/*
 .DS_Store
 alsoslc.sublime-project
 alsoslc.sublime-workspace
-set_envvars.sh
+run.sh
