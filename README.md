@@ -43,5 +43,6 @@ The assets included are
 
 * [Leaflet](https://github.com/Leaflet/Leaflet) 1.5.1
 * [Bootstrap](https://github.com/twbs/bootstrap) 4.0
+* [Lazy Load](https://github.com/tuupola/lazyload) 2.0.0-rc.2
 
 These have their own license separate from this repo's and are included here only for convenience.

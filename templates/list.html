@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Photos{% endblock %}
+{% block head %}
+<script src="assets/lazyload/lazyload.min.js"></script>
+{% endblock %}
 {% block content %}
 		<div class="row">
 			<div class="col-md">
@@ -9,7 +12,7 @@
 		<div class="row">
 			{% for image in site.images|sort(attribute='_date_taken', reverse=True) -%}
 			<div class="col-md-3">
-				<a href="{{ image.name }}.html"><img src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid" /></a>
+				<a href="{{ image.name }}.html"><img data-src="images/{{ image.name }}_{{ site.image_widths[1] }}.jpg" class="img-fluid lazyload" /></a>
 				<p><small><em>{{ image.date_taken }}</em></small></p>
 			</div>
 			{% endfor %}
@@ -19,4 +22,9 @@
 				<p>I also have <a href="map.html">an interactive map showing all image locations 🗺</a>!</p>
 			</div>
 		</div>
+		{% block scripts %}
+		<script type="text/javascript">
+		lazyload();
+		</script>
+		{% endblock %}
 {% endblock %}
