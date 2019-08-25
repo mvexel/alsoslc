@@ -1,6 +1,20 @@
 # alsoslc
 Site generator for https://alsoslc.com
 
+This script takes a directory of geotagged images, and creates the pages that make up alsoslc.com:
+* Index page with some static text and \~10 randomly selected images. (Set this number in [`NUM_HOME_IMAGES`](https://github.com/mvexel/alsoslc/blob/master/publish.py#L26))
+* Map page showing an interactive map with all image locations, using clustering to reduce clutter
+* List page with clickable thumbnails for all images in 4 columns
+* Individual photo pages with a mini map.
+
+Images in the source folder that do not have geotags are skipped.
+
+The photo 'titles' are generated using reverse geocoding with the [Nominatim](https://nominatim.openstreetmap.org/) geocoder to get street, neighborhood and city.
+
+If the photo has an IPTC `Headline` tag, its content will be used as the title and reverse geocoding skipped. If the photo has an IPTC `Description` tag, its content will be used to generate a longer description text visible on the individual photo page.
+
+We use the [Jinja](https://palletsprojects.com/p/jinja/) template engine for generating the pages.
+
 ## Initial Setup
 
 ```
