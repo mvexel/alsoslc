@@ -146,14 +146,9 @@ class AlsoSLCSite(object):
             )
             if the_image:
                 if random() < NUM_HOME_IMAGES / len(image_list):
-                    print("{image} to display on home page".format(
-                        image=the_image.name))
                     the_image.display_on_home = True
+                the_image.save(self)
                 self.images.append(the_image)
-
-        # create thumbnails and save them, and the full size image
-        for image in self.images:
-            image.save(self)
 
         # write root pages
         for page_name in PAGES:
@@ -188,13 +183,16 @@ class AlsoSLCImage(object):
     headline = None
     lon = None
     lat = None
-    image_handle = None
     html = None
     skip = False
     display_on_home = False
+    name = None
+    image_path = None
 
-    def __init__(self, handle):
-        self.image_handle = handle
+    def __init__(self, image_path):
+        self.image_path = image_path
+        self.name = os.path.splitext(
+            os.path.basename(image_path))[0]
         if os.path.exists(
                 os.path.join(
                     site.site_path,
@@ -211,8 +209,7 @@ class AlsoSLCImage(object):
         if os.path.isfile(image_path) and imghdr.what(
                 image_path
         ) in ["jpeg", "png"]:
-            image_handle = Image.open(image_path)
-            return cls(image_handle)
+            return cls(image_path)
         return None
 
     def save(self, my_site):
@@ -245,7 +242,8 @@ class AlsoSLCImage(object):
             file_handle.write(self.html)
 
         # Create and save thumbnails
-        orig_width = self.image_handle.size[0]
+        image_handle = Image.open(self.image_path)
+        orig_width = image_handle.size[0]
         for width in site.image_widths:
             if width < orig_width:
                 thumb_path = os.path.join(
@@ -254,18 +252,20 @@ class AlsoSLCImage(object):
                     "{}_{}.jpg".format(self.name, width),
                 )
                 if not os.path.isfile(thumb_path):
-                    im_copy = self.image_handle.copy()
+                    im_copy = image_handle.copy()
                     im_copy.thumbnail(
                         (width, width), Image.ANTIALIAS
                     )
                     im_copy.save(thumb_path, "JPEG")
-
+        image_handle = None
 
     def read_exif(self):
         """Reads relevant exif tags from an image provided as PIL.Image object"""
-        exif = self.image_handle.info["parsed_exif"]
-        iptc = IptcImagePlugin.getiptcinfo(self.image_handle)
+        image_handle = Image.open(self.image_path)
+        exif = image_handle.info["parsed_exif"]
+        iptc = IptcImagePlugin.getiptcinfo(image_handle)
         labeled_exifs = label_exifs(exif)
+        image_handle = None
 
         # longitude, latitude
         geotags = get_geotagging(exif)
@@ -311,13 +311,6 @@ class AlsoSLCImage(object):
     def age_in_days(self):
         """The age of the image in days"""
         return (datetime.now() - self._date_taken).days
-
-    @property
-    def name(self):
-        """the bare name of the image"""
-        return os.path.splitext(
-            os.path.basename(self.image_handle.filename)
-        )[0]
 
 
 def crap(message):
